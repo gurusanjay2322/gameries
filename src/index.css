@@ -1,3 +1,144 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+:root {
+  /* Light mode colors */
+  --color-cream: #FDFBEE;
+  --color-teal: #57B4BA;
+  --color-dark-teal: #015551;
+  --color-orange: #FE4F2D;
+}
+
+/* Dark mode colors */
+.dark {
+  --color-cream: #015551;
+  --color-teal: #57B4BA;
+  --color-dark-teal: #FDFBEE;
+  --color-orange: #FE4F2D;
+  color-scheme: dark;
+}
+
+/* Base styles */
+body {
+  background-color: var(--color-cream);
+  color: var(--color-dark-teal);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Simple animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to { 
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Utility classes */
+.bg-primary {
+  background-color: var(--color-cream);
+}
+
+.bg-secondary {
+  background-color: var(--color-teal);
+}
+
+.bg-accent {
+  background-color: var(--color-orange);
+}
+
+.text-primary {
+  color: var(--color-dark-teal);
+}
+
+.text-secondary {
+  color: var(--color-teal);
+}
+
+.text-accent {
+  color: var(--color-orange);
+}
+
+.border-primary {
+  border-color: var(--color-teal);
+}
+
+.border-accent {
+  border-color: var(--color-orange);
+}
+
+/* Component specific styles */
+.game-container {
+  background-color: var(--color-cream);
+  border: 2px solid var(--color-teal);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.game-cell {
+  background-color: transparent;
+  border: 1px solid var(--color-teal);
+  transition: background-color 0.2s ease;
+}
+
+.game-cell:hover {
+  background-color: rgba(87, 180, 186, 0.1);
+}
+
+.game-cell.selected {
+  background-color: rgba(87, 180, 186, 0.2);
+}
+
+.game-button {
+  background-color: var(--color-teal);
+  color: var(--color-cream);
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  transition: background-color 0.2s ease;
+}
+
+.game-button:hover {
+  background-color: var(--color-dark-teal);
+  color: var(--color-cream);
+}
+
+.game-button.accent {
+  background-color: var(--color-orange);
+}
+
+.game-button.accent:hover {
+  background-color: var(--color-dark-teal);
+}
+
+/* Dark mode specific styles */
+.dark .game-container {
+  border-color: var(--color-teal);
+}
+
+.dark .game-cell {
+  border-color: var(--color-teal);
+}
+
+.dark .game-cell:hover {
+  background-color: rgba(87, 180, 186, 0.2);
+}
+
+.dark .game-cell.selected {
+  background-color: rgba(87, 180, 186, 0.3);
+}

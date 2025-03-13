@@ -3,124 +3,94 @@ import React, { useState, useEffect } from 'react';
 const WhackAMole = () => {
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [gameStatus, setGameStatus] = useState('playing');
-  const [moles, setMoles] = useState(Array(9).fill(false));
-  const [highScore, setHighScore] = useState(0);
-
-  useEffect(() => {
-    let timer;
-    if (gameStatus === 'playing') {
-      timer = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            setGameStatus('ended');
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [gameStatus]);
-
-  useEffect(() => {
-    let moleTimer;
-    if (gameStatus === 'playing') {
-      moleTimer = setInterval(() => {
-        setMoles(prev => {
-          const newMoles = [...prev];
-          // Randomly show/hide moles
-          newMoles.forEach((_, index) => {
-            if (Math.random() < 0.3) { // 30% chance to show a mole
-              newMoles[index] = true;
-            } else {
-              newMoles[index] = false;
-            }
-          });
-          return newMoles;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(moleTimer);
-  }, [gameStatus]);
-
-  const handleWhack = (index) => {
-    if (moles[index]) {
-      setScore(prev => prev + 1);
-      setMoles(prev => {
-        const newMoles = [...prev];
-        newMoles[index] = false;
-        return newMoles;
-      });
-    }
-  };
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [activeHole, setActiveHole] = useState(null);
+  const [gameOver, setGameOver] = useState(false);
 
   const startGame = () => {
     setScore(0);
     setTimeLeft(30);
-    setGameStatus('playing');
-    setMoles(Array(9).fill(false));
+    setIsPlaying(true);
+    setGameOver(false);
   };
 
   useEffect(() => {
-    if (gameStatus === 'ended' && score > highScore) {
-      setHighScore(score);
+    let timer;
+    let moleTimer;
+
+    if (isPlaying && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+
+      moleTimer = setInterval(() => {
+        const randomHole = Math.floor(Math.random() * 9);
+        setActiveHole(randomHole);
+        setTimeout(() => {
+          setActiveHole(null);
+        }, 1000);
+      }, 1500);
+    } else if (timeLeft === 0) {
+      setIsPlaying(false);
+      setGameOver(true);
     }
-  }, [gameStatus, score, highScore]);
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(moleTimer);
+    };
+  }, [isPlaying, timeLeft]);
+
+  const whackMole = (holeIndex) => {
+    if (holeIndex === activeHole) {
+      setScore(prev => prev + 1);
+      setActiveHole(null);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-8">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-light text-white mb-2 tracking-wider">Whack-a-Mole</h1>
-        <div className="text-xl text-gray-400">
-          Time: {timeLeft}s | Score: {score} | High Score: {highScore}
-        </div>
+    <div className="flex flex-col items-center space-y-8">
+      <h1 className="text-4xl font-bold text-secondary mb-8">Whack-a-Mole</h1>
+      <div className="flex justify-between w-full max-w-md text-xl font-semibold text-primary">
+        <div>Score: {score}</div>
+        <div>Time: {timeLeft}s</div>
       </div>
-
-      <div className="grid grid-cols-3 gap-4 max-w-2xl">
-        {moles.map((isUp, index) => (
+      <div className="grid grid-cols-3 gap-4">
+        {Array(9).fill(null).map((_, index) => (
           <button
             key={index}
-            className={`w-32 h-32 rounded-lg bg-gray-800 relative overflow-hidden
-              transition-all duration-200 hover:bg-gray-700`}
-            onClick={() => handleWhack(index)}
-            disabled={gameStatus !== 'playing'}
+            onClick={() => whackMole(index)}
+            className={`w-24 h-24 rounded-lg transition-all duration-300 transform hover:scale-105 ${
+              activeHole === index
+                ? 'bg-accent text-primary'
+                : 'bg-secondary text-primary'
+            }`}
           >
-            <div
-              className={`absolute inset-0 bg-gray-700 rounded-lg transition-transform duration-200
-                ${isUp ? 'translate-y-0' : 'translate-y-full'}`}
-            >
-              <div className="absolute inset-0 flex items-center justify-center text-4xl">
-                🐹
-              </div>
-            </div>
+            {activeHole === index ? '🐹' : '🕳️'}
           </button>
         ))}
       </div>
-
-      {gameStatus === 'ended' ? (
-        <div className="mt-8 text-center">
-          <h2 className="text-2xl text-white mb-4">Game Over!</h2>
-          <p className="text-gray-400 mb-4">Final Score: {score}</p>
-          <button
-            className="px-6 py-3 bg-gray-700 text-white rounded-lg 
-              text-sm uppercase tracking-wider font-medium
-              hover:bg-gray-600 hover:-translate-y-0.5 transition-all duration-200"
-            onClick={startGame}
-          >
-            Play Again
-          </button>
+      {gameOver ? (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-primary p-8 rounded-lg text-center">
+            <h2 className="text-3xl font-bold text-secondary mb-4">Game Over!</h2>
+            <p className="text-xl text-primary mb-4">Final Score: {score}</p>
+            <button
+              onClick={startGame}
+              className="px-6 py-2 bg-accent text-primary rounded-lg hover:bg-secondary transition-colors"
+            >
+              Play Again
+            </button>
+          </div>
         </div>
-      ) : (
-        <button 
-          className="mt-8 px-6 py-3 bg-gray-700 text-white rounded-lg 
-            text-sm uppercase tracking-wider font-medium
-            hover:bg-gray-600 hover:-translate-y-0.5 transition-all duration-200"
+      ) : !isPlaying ? (
+        <button
           onClick={startGame}
+          className="px-6 py-2 bg-accent text-primary rounded-lg hover:bg-secondary transition-colors"
         >
-          New Game
+          Start Game
         </button>
-      )}
+      ) : null}
     </div>
   );
 };

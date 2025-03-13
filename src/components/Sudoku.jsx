@@ -10,6 +10,16 @@ const Sudoku = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [initialPuzzleState, setInitialPuzzleState] = useState(initialBoard);
   const [isEditing, setIsEditing] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  // Add effect to handle dark mode
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
 
   // Generate a valid Sudoku puzzle
   const generatePuzzle = () => {
@@ -145,87 +155,91 @@ const Sudoku = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-8">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-light text-white mb-2 tracking-wider">Sudoku</h1>
-        <div className="text-xl text-gray-400">
-          Time: {formatTime(time)} | Mistakes: {mistakes}
-        </div>
-      </div>
-
-      <div className="bg-gray-800 p-4 rounded-lg shadow-2xl">
-        <div className="grid grid-cols-9 gap-0.5">
-          {board.map((row, rowIndex) => (
-            row.map((cell, colIndex) => (
-              <button
-                key={`${rowIndex}-${colIndex}`}
-                className={`w-12 h-12 bg-gray-700 text-white text-xl font-light relative
-                  flex items-center justify-center transition-all duration-200
-                  ${selectedCell?.row === rowIndex && selectedCell?.col === colIndex ? 'bg-blue-600' : ''}
-                  ${initialPuzzleState[rowIndex][colIndex] === 0 ? 'hover:bg-gray-600' : 'bg-gray-600'}
-                  ${(rowIndex + 1) % 3 === 0 ? 'border-b-2 border-gray-600' : ''}
-                  ${(colIndex + 1) % 3 === 0 ? 'border-r-2 border-gray-600' : ''}`}
-                onClick={() => handleCellClick(rowIndex, colIndex)}
-                disabled={initialPuzzleState[rowIndex][colIndex] !== 0}
-              >
-                {cell !== 0 && cell}
-                {selectedCell?.row === rowIndex && selectedCell?.col === colIndex && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-0.5 h-6 bg-white animate-blink"></div>
-                  </div>
-                )}
-              </button>
-            ))
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-8 grid grid-cols-9 gap-2">
-        {[1,2,3,4,5,6,7,8,9].map(num => (
+    <div className="min-h-screen bg-primary transition-all duration-300 animate-fade-in">
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-8 animate-slide-up">
+          <h1 className="text-4xl font-bold text-secondary">
+            Sudoku
+          </h1>
           <button
-            key={num}
-            className="w-12 h-12 bg-gray-700 text-white text-xl font-light rounded-lg
-              flex items-center justify-center transition-all duration-200
-              hover:bg-gray-600 hover:-translate-y-0.5"
-            onClick={() => handleNumberInput(num)}
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="p-3 rounded-full bg-secondary text-primary hover:bg-dark-teal transition-all duration-300 text-2xl"
           >
-            {num}
+            {isDarkMode ? '☀️' : '🌙'}
           </button>
-        ))}
-      </div>
+        </div>
 
-      <div className="mt-8 flex gap-4">
-        <button 
-          className="px-6 py-3 bg-gray-700 text-white rounded-lg 
-            text-sm uppercase tracking-wider font-medium
-            hover:bg-gray-600 hover:-translate-y-0.5 transition-all duration-200"
-          onClick={() => setIsPaused(!isPaused)}
-        >
-          {isPaused ? 'Resume' : 'Pause'}
-        </button>
-        <button 
-          className="px-6 py-3 bg-gray-700 text-white rounded-lg 
-            text-sm uppercase tracking-wider font-medium
-            hover:bg-gray-600 hover:-translate-y-0.5 transition-all duration-200"
-          onClick={generatePuzzle}
-        >
-          New Game
-        </button>
+        <div className="game-container animate-slide-up">
+          <div className="grid grid-cols-9 gap-1">
+            {board.map((row, rowIndex) => (
+              row.map((cell, colIndex) => (
+                <button
+                  key={`${rowIndex}-${colIndex}`}
+                  onClick={() => handleCellClick(rowIndex, colIndex)}
+                  className={`
+                    w-12 h-12 text-xl font-bold rounded
+                    game-cell
+                    ${selectedCell?.row === rowIndex && selectedCell?.col === colIndex
+                      ? 'selected'
+                      : ''
+                    }
+                    ${initialPuzzleState[rowIndex][colIndex] !== 0 
+                      ? 'text-secondary' 
+                      : 'text-accent'
+                    }
+                    ${colIndex % 3 === 0 ? 'border-l-2 border-primary' : ''}
+                    ${rowIndex % 3 === 0 ? 'border-t-2 border-primary' : ''}
+                  `}
+                >
+                  {cell}
+                </button>
+              ))
+            ))}
+          </div>
+
+          <div className="mt-6 grid grid-cols-9 gap-2">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+              <button
+                key={num}
+                onClick={() => handleNumberInput(num)}
+                className="game-button"
+              >
+                {num}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-6 flex justify-center gap-4">
+            <button
+              onClick={generatePuzzle}
+              className="game-button accent"
+            >
+              New Game
+            </button>
+            <button
+              onClick={() => setIsPaused(!isPaused)}
+              className="game-button"
+            >
+              {isPaused ? 'Resume' : 'Pause'}
+            </button>
+          </div>
+        </div>
       </div>
 
       {gameStatus === 'won' && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-gray-800 p-8 rounded-lg text-center">
-            <h2 className="text-2xl text-white mb-4">Congratulations!</h2>
-            <p className="text-gray-400 mb-4">You completed the puzzle!</p>
-            <button
-              className="px-6 py-3 bg-gray-700 text-white rounded-lg 
-                text-sm uppercase tracking-wider font-medium
-                hover:bg-gray-600 hover:-translate-y-0.5 transition-all duration-200"
-              onClick={generatePuzzle}
-            >
-              Play Again
-            </button>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center animate-fade-in">
+          <div className="game-container p-8">
+            <h2 className="text-2xl font-bold text-secondary mb-4">
+              Congratulations! You won! 🎉
+            </h2>
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={generatePuzzle}
+                className="game-button accent"
+              >
+                Play Again
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -241,6 +255,24 @@ style.textContent = `
   }
   .animate-blink {
     animation: blink 1s step-end infinite;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes slideIn {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.5s ease-out forwards;
   }
 `;
 document.head.appendChild(style);

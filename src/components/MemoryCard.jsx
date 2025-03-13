@@ -5,13 +5,15 @@ const MemoryCard = () => {
   const [flippedCards, setFlippedCards] = useState([]);
   const [matchedPairs, setMatchedPairs] = useState([]);
   const [moves, setMoves] = useState(0);
-  const [gameStatus, setGameStatus] = useState('idle'); // idle, playing, complete
-  const [isStarting, setIsStarting] = useState(false);
-  const [time, setTime] = useState(0);
-  const [showAllCards, setShowAllCards] = useState(false);
+  const [gameWon, setGameWon] = useState(false);
 
-  const generateCards = () => {
-    const emojis = ['🎮', '🎲', '🎯', '🎨', '🎭', '🎪', '🎟️', '🎠'];
+  const emojis = ['🎮', '🎲', '🎯', '🎨', '🎭', '🎪', '🎟️', '🎠'];
+
+  useEffect(() => {
+    initializeGame();
+  }, []);
+
+  const initializeGame = () => {
     const cardPairs = [...emojis, ...emojis];
     const shuffledCards = cardPairs
       .sort(() => Math.random() - 0.5)
@@ -19,157 +21,102 @@ const MemoryCard = () => {
         id: index,
         emoji,
         isFlipped: false,
-        isMatched: false
+        isMatched: false,
       }));
     setCards(shuffledCards);
     setFlippedCards([]);
     setMatchedPairs([]);
     setMoves(0);
-    setGameStatus('idle');
-    setTime(0);
+    setGameWon(false);
   };
-
-  const startGame = () => {
-    setIsStarting(true);
-    generateCards();
-    setShowAllCards(true);
-    
-    // Show all cards for 5 seconds, then hide them and start the game
-    setTimeout(() => {
-      setShowAllCards(false);
-      setGameStatus('playing');
-      setIsStarting(false);
-    }, 5000);
-  };
-
-  useEffect(() => {
-    let timer;
-    if (gameStatus === 'playing') {
-      timer = setInterval(() => {
-        setTime(prev => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [gameStatus]);
 
   const handleCardClick = (cardId) => {
-    if (gameStatus !== 'playing' || isStarting) return;
-    if (flippedCards.length === 2) return;
-    if (flippedCards.includes(cardId) || matchedPairs.includes(cardId)) return;
+    if (flippedCards.length === 2 || cards[cardId].isMatched) return;
+
+    const newCards = cards.map(card =>
+      card.id === cardId ? { ...card, isFlipped: true } : card
+    );
+    setCards(newCards);
 
     const newFlippedCards = [...flippedCards, cardId];
     setFlippedCards(newFlippedCards);
 
     if (newFlippedCards.length === 2) {
-      setMoves(prev => prev + 1);
-      const [firstCard, secondCard] = newFlippedCards;
-      const firstEmoji = cards[firstCard].emoji;
-      const secondEmoji = cards[secondCard].emoji;
-
-      if (firstEmoji === secondEmoji) {
-        setMatchedPairs(prev => [...prev, firstCard, secondCard]);
-        setFlippedCards([]);
-      } else {
-        setTimeout(() => {
-          setFlippedCards([]);
-        }, 1000);
-      }
+      setMoves(moves + 1);
+      checkMatch(newFlippedCards);
     }
   };
 
-  useEffect(() => {
-    if (matchedPairs.length === cards.length && cards.length > 0) {
-      setGameStatus('complete');
-    }
-  }, [matchedPairs, cards]);
+  const checkMatch = (flippedCardIds) => {
+    const [first, second] = flippedCardIds;
+    const firstCard = cards[first];
+    const secondCard = cards[second];
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    if (firstCard.emoji === secondCard.emoji) {
+      const newCards = cards.map(card =>
+        card.id === first || card.id === second
+          ? { ...card, isMatched: true }
+          : card
+      );
+      setCards(newCards);
+      setFlippedCards([]);
+      setMatchedPairs([...matchedPairs, firstCard.emoji]);
+
+      if (matchedPairs.length + 1 === emojis.length) {
+        setGameWon(true);
+      }
+    } else {
+      setTimeout(() => {
+        const newCards = cards.map(card =>
+          card.id === first || card.id === second
+            ? { ...card, isFlipped: false }
+            : card
+        );
+        setCards(newCards);
+        setFlippedCards([]);
+      }, 1000);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-8">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-light text-white mb-2 tracking-wider">Memory Card</h1>
-        <div className="text-xl text-gray-400">
-          Time: {formatTime(time)} | Moves: {moves}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        {cards.map((card) => (
-          <div
+    <div className="flex flex-col items-center space-y-8">
+      <h1 className="text-4xl font-bold text-secondary mb-8">Memory Card Game</h1>
+      <div className="text-xl font-semibold text-primary">Moves: {moves}</div>
+      <div className="grid grid-cols-4 gap-4">
+        {cards.map(card => (
+          <button
             key={card.id}
-            className={`w-24 h-24 cursor-pointer perspective-1000
-              ${isStarting ? 'opacity-100' : 'opacity-100'} transition-opacity duration-500`}
             onClick={() => handleCardClick(card.id)}
+            className={`w-24 h-24 rounded-lg text-4xl flex items-center justify-center transition-all duration-300 transform hover:scale-105 ${
+              card.isFlipped || card.isMatched
+                ? 'bg-accent text-primary'
+                : 'bg-secondary text-primary'
+            }`}
           >
-            <div
-              className={`relative w-full h-full transition-transform duration-500 transform-style-3d
-                ${showAllCards || flippedCards.includes(card.id) || matchedPairs.includes(card.id) ? '' : 'rotate-y-180'}`}
-            >
-              {/* Front of card */}
-              <div className={`absolute w-full h-full backface-hidden rounded-lg shadow-lg
-                flex items-center justify-center text-4xl
-                ${matchedPairs.includes(card.id) ? 'bg-green-600' : 'bg-gray-700'}`}>
-                {card.emoji}
-              </div>
-              {/* Back of card */}
-              <div className="absolute w-full h-full backface-hidden bg-gray-600 rounded-lg shadow-lg
-                flex items-center justify-center text-4xl rotate-y-180">
-                ?
-              </div>
-            </div>
-          </div>
+            {card.isFlipped || card.isMatched ? card.emoji : '?'}
+          </button>
         ))}
       </div>
-
-      {gameStatus === 'idle' ? (
-        <button
-          className="px-6 py-3 bg-gray-700 text-white rounded-lg
-            hover:bg-gray-600 hover:-translate-y-0.5 transition-all duration-200"
-          onClick={startGame}
-        >
-          Start Game
-        </button>
-      ) : gameStatus === 'complete' ? (
-        <div className="text-center">
-          <h2 className="text-2xl text-white mb-4">Congratulations!</h2>
-          <p className="text-gray-400 mb-4">You completed the game in {moves} moves!</p>
-          <button
-            className="px-6 py-3 bg-gray-700 text-white rounded-lg
-              hover:bg-gray-600 hover:-translate-y-0.5 transition-all duration-200"
-            onClick={startGame}
-          >
-            Play Again
-          </button>
+      {gameWon && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-primary p-8 rounded-lg text-center">
+            <h2 className="text-3xl font-bold text-secondary mb-4">Congratulations!</h2>
+            <p className="text-xl text-primary mb-4">You won in {moves} moves!</p>
+            <button
+              onClick={initializeGame}
+              className="px-6 py-2 bg-accent text-primary rounded-lg hover:bg-secondary transition-colors"
+            >
+              Play Again
+            </button>
+          </div>
         </div>
-      ) : (
-        <button
-          className="px-6 py-3 bg-gray-700 text-white rounded-lg
-            hover:bg-gray-600 hover:-translate-y-0.5 transition-all duration-200"
-          onClick={startGame}
-        >
-          New Game
-        </button>
       )}
-
-      <style jsx>{`
-        .perspective-1000 {
-          perspective: 1000px;
-        }
-        .transform-style-3d {
-          transform-style: preserve-3d;
-        }
-        .backface-hidden {
-          backface-visibility: hidden;
-        }
-        .rotate-y-180 {
-          transform: rotateY(180deg);
-        }
-      `}</style>
+      <button
+        onClick={initializeGame}
+        className="px-6 py-2 bg-accent text-primary rounded-lg hover:bg-secondary transition-colors"
+      >
+        Reset Game
+      </button>
     </div>
   );
 };

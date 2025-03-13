@@ -1,52 +1,93 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 const GRID_SIZE = 20;
-const INITIAL_SNAKE = [{ x: 10, y: 10 }];
-const INITIAL_DIRECTION = { x: 1, y: 0 };
+const INITIAL_SNAKE = [[0, 0]];
+const INITIAL_DIRECTION = 'RIGHT';
 const GAME_SPEED = 150;
 
 const Snake = () => {
-  const [snake, setSnake] = useState(INITIAL_SNAKE);
-  const [direction, setDirection] = useState(INITIAL_DIRECTION);
-  const [food, setFood] = useState({ x: 5, y: 5 });
+  const [snake, setSnake] = useState([[0, 0]]);
+  const [food, setFood] = useState([5, 5]);
+  const [direction, setDirection] = useState('RIGHT');
+  const [gameOver, setGameOver] = useState(false);
   const [score, setScore] = useState(0);
-  const [gameStatus, setGameStatus] = useState('idle');
+  const [isPaused, setIsPaused] = useState(false);
   const [highScore, setHighScore] = useState(0);
 
-  // Generate random food position
   const generateFood = useCallback(() => {
-    const newFood = {
-      x: Math.floor(Math.random() * GRID_SIZE),
-      y: Math.floor(Math.random() * GRID_SIZE)
-    };
+    const newFood = [
+      Math.floor(Math.random() * GRID_SIZE),
+      Math.floor(Math.random() * GRID_SIZE)
+    ];
     setFood(newFood);
   }, []);
 
-  // Handle keyboard input
-  useEffect(() => {
-    const handleKeyPress = (e) => {
-      if (gameStatus === 'idle') {
-        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || 
-            e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-          setGameStatus('playing');
-        }
-        return;
+  const moveSnake = useCallback(() => {
+    if (gameOver || isPaused) return;
+
+    setSnake(prevSnake => {
+      const newSnake = [...prevSnake];
+      const head = [...newSnake[0]];
+
+      switch (direction) {
+        case 'UP':
+          head[1] -= 1;
+          break;
+        case 'DOWN':
+          head[1] += 1;
+          break;
+        case 'LEFT':
+          head[0] -= 1;
+          break;
+        case 'RIGHT':
+          head[0] += 1;
+          break;
+        default:
+          break;
       }
 
-      if (gameStatus !== 'playing') return;
+      // Check for collisions with walls
+      if (head[0] < 0 || head[0] >= GRID_SIZE || head[1] < 0 || head[1] >= GRID_SIZE) {
+        setGameOver(true);
+        return prevSnake;
+      }
 
-      switch (e.key) {
+      // Check for collisions with self
+      if (newSnake.some(segment => segment[0] === head[0] && segment[1] === head[1])) {
+        setGameOver(true);
+        return prevSnake;
+      }
+
+      newSnake.unshift(head);
+
+      // Check if snake ate food
+      if (head[0] === food[0] && head[1] === food[1]) {
+        setScore(prev => prev + 10);
+        generateFood();
+        return newSnake;
+      }
+
+      return newSnake.slice(0, -1);
+    });
+  }, [direction, food, gameOver, isPaused, generateFood]);
+
+  useEffect(() => {
+    const handleKeyPress = (event) => {
+      switch (event.key) {
         case 'ArrowUp':
-          if (direction.y !== 1) setDirection({ x: 0, y: -1 });
+          if (direction !== 'DOWN') setDirection('UP');
           break;
         case 'ArrowDown':
-          if (direction.y !== -1) setDirection({ x: 0, y: 1 });
+          if (direction !== 'UP') setDirection('DOWN');
           break;
         case 'ArrowLeft':
-          if (direction.x !== 1) setDirection({ x: -1, y: 0 });
+          if (direction !== 'RIGHT') setDirection('LEFT');
           break;
         case 'ArrowRight':
-          if (direction.x !== -1) setDirection({ x: 1, y: 0 });
+          if (direction !== 'LEFT') setDirection('RIGHT');
+          break;
+        case ' ':
+          setIsPaused(prev => !prev);
           break;
         default:
           break;
@@ -55,129 +96,85 @@ const Snake = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [direction, gameStatus]);
+  }, [direction]);
 
-  // Game loop
   useEffect(() => {
-    let gameLoop;
-    if (gameStatus === 'playing') {
-      gameLoop = setInterval(() => {
-        setSnake(prevSnake => {
-          const head = prevSnake[0];
-          const newHead = {
-            x: head.x + direction.x,
-            y: head.y + direction.y
-          };
-
-          // Check for collisions with walls
-          if (
-            newHead.x < 0 ||
-            newHead.x >= GRID_SIZE ||
-            newHead.y < 0 ||
-            newHead.y >= GRID_SIZE
-          ) {
-            setGameStatus('gameover');
-            return prevSnake;
-          }
-
-          // Check for collisions with self
-          if (prevSnake.some(segment => segment.x === newHead.x && segment.y === newHead.y)) {
-            setGameStatus('gameover');
-            return prevSnake;
-          }
-
-          // Check for food collision
-          if (newHead.x === food.x && newHead.y === food.y) {
-            setScore(prev => prev + 1);
-            generateFood();
-            return [newHead, ...prevSnake];
-          }
-
-          return [newHead, ...prevSnake.slice(0, -1)];
-        });
-      }, GAME_SPEED);
-    }
+    const gameLoop = setInterval(moveSnake, GAME_SPEED);
     return () => clearInterval(gameLoop);
-  }, [direction, food, gameStatus, generateFood]);
+  }, [moveSnake]);
 
-  // Update high score
   useEffect(() => {
-    if (gameStatus === 'gameover' && score > highScore) {
+    if (gameOver && score > highScore) {
       setHighScore(score);
     }
-  }, [gameStatus, score, highScore]);
+  }, [gameOver, score, highScore]);
 
-  const startGame = () => {
-    setSnake(INITIAL_SNAKE);
-    setDirection(INITIAL_DIRECTION);
+  const resetGame = () => {
+    setSnake([[0, 0]]);
+    setDirection('RIGHT');
+    setGameOver(false);
     setScore(0);
-    setGameStatus('idle');
+    setIsPaused(false);
     generateFood();
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-8">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-light text-white mb-2 tracking-wider">Snake</h1>
-        <div className="text-xl text-gray-400">
-          Score: {score} | High Score: {highScore}
-        </div>
+    <div className="animate-fade-in">
+      <div className="flex justify-between items-center mb-8 animate-slide-up">
+        <h1 className="text-4xl font-bold text-secondary">Snake</h1>
+        <div className="text-2xl font-bold text-accent">Score: {score} | High Score: {highScore}</div>
       </div>
 
-      <div className="bg-gray-800 p-4 rounded-lg shadow-2xl">
-        <div 
-          className="grid gap-0.5"
-          style={{
-            gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(0, 1fr))`,
-            width: '400px',
-            height: '400px'
-          }}
-        >
-          {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, index) => {
-            const x = index % GRID_SIZE;
-            const y = Math.floor(index / GRID_SIZE);
-            const isSnake = snake.some(segment => segment.x === x && segment.y === y);
-            const isFood = food.x === x && food.y === y;
-
-            return (
-              <div
-                key={index}
-                className={`w-full h-full rounded-sm transition-colors duration-100
-                  ${isSnake ? 'bg-green-500' : isFood ? 'bg-red-500' : 'bg-gray-700'}`}
-              />
-            );
-          })}
+      <div className="game-container p-6 animate-slide-up">
+        <div className="grid grid-cols-20 gap-1 w-fit mx-auto">
+          {Array(GRID_SIZE).fill().map((_, row) =>
+            Array(GRID_SIZE).fill().map((_, col) => {
+              const isSnake = snake.some(segment => segment[0] === col && segment[1] === row);
+              const isFood = food[0] === col && food[1] === row;
+              return (
+                <div
+                  key={`${row}-${col}`}
+                  className={`
+                    w-4 h-4 rounded
+                    ${isSnake ? 'bg-secondary' : ''}
+                    ${isFood ? 'bg-accent' : ''}
+                    ${!isSnake && !isFood ? 'bg-primary border border-secondary' : ''}
+                  `}
+                />
+              );
+            })
+          )}
         </div>
-      </div>
 
-      {gameStatus === 'gameover' ? (
-        <div className="mt-8 text-center">
-          <h2 className="text-2xl text-white mb-4">Game Over!</h2>
-          <p className="text-gray-400 mb-4">Final Score: {score}</p>
+        <div className="mt-6 flex justify-center gap-4">
           <button
-            className="px-6 py-3 bg-gray-700 text-white rounded-lg 
-              text-sm uppercase tracking-wider font-medium
-              hover:bg-gray-600 hover:-translate-y-0.5 transition-all duration-200"
-            onClick={startGame}
-          >
-            Play Again
-          </button>
-        </div>
-      ) : (
-        <div className="mt-8 text-center">
-          <p className="text-gray-400 mb-4">
-            {gameStatus === 'idle' 
-              ? 'Press any arrow key to start'
-              : 'Use arrow keys to control the snake'}
-          </p>
-          <button 
-            className="px-6 py-3 bg-gray-700 text-white rounded-lg 
-              text-sm uppercase tracking-wider font-medium
-              hover:bg-gray-600 hover:-translate-y-0.5 transition-all duration-200"
-            onClick={startGame}
+            onClick={resetGame}
+            className="game-button accent"
           >
             New Game
           </button>
+          <button
+            onClick={() => setIsPaused(!isPaused)}
+            className="game-button"
+          >
+            {isPaused ? 'Resume' : 'Pause'}
+          </button>
+        </div>
+      </div>
+
+      {gameOver && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center animate-fade-in">
+          <div className="game-container p-8 text-center">
+            <h2 className="text-2xl font-bold text-secondary mb-4">
+              Game Over! Score: {score}
+            </h2>
+            <button
+              onClick={resetGame}
+              className="game-button accent"
+            >
+              Play Again
+            </button>
+          </div>
         </div>
       )}
     </div>
